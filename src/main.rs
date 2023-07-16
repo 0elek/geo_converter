@@ -41,14 +41,12 @@ struct Coordinates {
 }
 impl Coordinates {
 
-    fn distance(&self, other: &Self) -> f64 {
+    pub fn distance(&self, other: &Self) -> f64 {
         let radius: f64 = 6_371.;
 
-        let lat1 = self.lat.to_radians();
-        let lon1 = self.lon.to_radians();
+        let (lat1, lon1) = self.rad(); 
 
-        let lat2 = other.lat.to_radians();
-        let lon2 = other.lon.to_radians();
+        let (lat2, lon2) = other.rad();
 
         let diff_lat: f64 = (lat1 - lat2) / 2.;
         let diff_lon = (lon1 - lon2) / 2.;
@@ -61,15 +59,15 @@ impl Coordinates {
         (radius * c) as f64
     }
 
-    fn new(lat: f64, lon: f64) -> Coordinates {
+    pub fn new(lat: f64, lon: f64) -> Coordinates {
         Coordinates { lat, lon }
     }
 
-    fn to_degrees(&self) -> (f64, f64) {
+    pub fn to_degrees(&self) -> (f64, f64) {
         (self.lat, self.lon)
     }
 
-    fn new_from_string(lon: String, lat: String) -> Result<Coordinates, ParseFloatError> {
+    pub fn new_from_string(lon: String, lat: String) -> Result<Coordinates, ParseFloatError> {
         let lon: Vec<&str> = lon.split_whitespace().collect::<Vec<&str>>();
         let lat: Vec<&str> = lat.split_whitespace().collect::<Vec<&str>>();
 
@@ -87,13 +85,13 @@ impl Coordinates {
         Ok(Coordinates::new(lon, lat))
     }
 
-    fn is_within_radius(&self, other: &Self, radius_in_km: f64) -> bool {
+    pub fn is_within_radius(&self, other: &Self, radius_in_km: f64) -> bool {
         let distance = self.distance(other);
 
         distance <= radius_in_km
     }
 
-    fn validate(&self) -> bool {
+    pub fn validate(&self) -> bool {
         let lat = self.lat;
         let lon = self.lon;
 
@@ -103,7 +101,7 @@ impl Coordinates {
         lat_valid && lon_valid
     }
 
-    fn new_random() -> Coordinates {
+    pub fn new_random() -> Coordinates {
         let mut rng = rand::thread_rng();
 
         let lat = rng.gen_range((-90.)..(90.));
@@ -112,12 +110,10 @@ impl Coordinates {
         Coordinates { lat, lon }
     }
 
-    fn midpoint(&self, other: &Self) -> Coordinates {
-        let lat1 = self.lat.to_radians();
-        let lon1 = self.lon.to_radians();
+    pub fn midpoint(&self, other: &Self) -> Coordinates {
+        let (lat1, lon1) = self.rad();
 
-        let lat2 = other.lat.to_radians();
-        let lon2 = other.lon.to_radians();
+        let (lat2, lon2) = other.rad();
 
         let x = (lat1.cos() * lon1.cos() + lat2.cos() * lon2.cos()) / 2.0;
         let y = (lat1.cos() * lon1.sin() + lat2.cos() * lon2.sin()) / 2.0;
@@ -129,7 +125,23 @@ impl Coordinates {
         }
     }
     
-    fn to_json(&self) -> String {
+    pub fn offset(&self, distance: f64, bearing: f64) -> Coordinates {
+        let radius: f64 = 6_371.;
+    
+        let (lat1, lon1 )= self.rad();
+        let angular_distance = distance / radius;
+    
+        let lat2 = (lat1.sin() * angular_distance.cos()) + (lat1.cos() * angular_distance.sin() * bearing.to_radians().cos());
+        let lon2 = lon1 + (angular_distance.sin() * bearing.to_radians().sin() * lat1.cos()).atan2(angular_distance.cos() - lat1.sin() * lat2.sin());
+    
+        Coordinates::new(lat2.to_degrees(), lon2.to_degrees())
+    }    
+    
+    pub fn to_json(&self) -> String {
         format!("{{\"lat\":{}, \"lon\":{}}}", self.lat, self.lon)
+    }
+
+    fn rad(&self) -> (f64, f64){
+            ( self.lat.to_radians(), self.lon.to_radians(),)
     }
 }
