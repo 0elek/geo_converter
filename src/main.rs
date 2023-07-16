@@ -33,6 +33,10 @@ fn main() {
         )
         .unwrap()
     );
+    println!(
+        "offset: {:?}",
+        paris.offset(9., 0.).distance(&paris)
+    );
 }
 #[derive(Debug)]
 struct Coordinates {
@@ -127,15 +131,22 @@ impl Coordinates {
     
     pub fn offset(&self, distance: f64, bearing: f64) -> Coordinates {
         let radius: f64 = 6_371.;
-    
-        let (lat1, lon1 )= self.rad();
+        let bearing = bearing.to_radians();
+        let (lat1, lon1) = self.rad();
         let angular_distance = distance / radius;
-    
-        let lat2 = (lat1.sin() * angular_distance.cos()) + (lat1.cos() * angular_distance.sin() * bearing.to_radians().cos());
-        let lon2 = lon1 + (angular_distance.sin() * bearing.to_radians().sin() * lat1.cos()).atan2(angular_distance.cos() - lat1.sin() * lat2.sin());
-    
-        Coordinates::new(lat2.to_degrees(), lon2.to_degrees())
-    }    
+        
+        let lat_res = lat1.sin() * angular_distance.cos() + lat1.cos() * angular_distance.sin() * bearing.cos();
+        let lat2 = lat_res.asin();
+        let lon_res = lon1 + (bearing.sin() * angular_distance.sin() * lat1.cos()) / (lat2.cos());
+        let lon2 = lon_res;
+
+        println!("lat2: {}, lon2: {}", lat2.to_degrees(), lon2.to_degrees());
+        
+        Coordinates {
+            lat: lat2.to_degrees(),
+            lon: lon2.to_degrees(),
+        }
+    }
     
     pub fn to_json(&self) -> String {
         format!("{{\"lat\":{}, \"lon\":{}}}", self.lat, self.lon)
